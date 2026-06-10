@@ -27,7 +27,7 @@ export interface PathPaymentClient {
   /**
    * Construct and simulate a upgrade transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
-  upgrade: ({ hash }: { hash: Buffer }, options?: MethodOptions) => Promise<AssembledTransaction<Result<void>>>;
+  upgrade: ({ hash }: { hash: Uint8Array }, options?: MethodOptions) => Promise<AssembledTransaction<Result<void>>>;
 
   /**
    * Construct and simulate a set_maps transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -73,14 +73,14 @@ export class PathPaymentClient extends ContractClient {
       & Omit<ContractClientOptions, "contractId">
       & {
         /** The hash of the Wasm blob, which must already be installed on-chain. */
-        wasmHash: Buffer | string;
+        wasmHash: Uint8Array | string;
         /** Salt used to generate the contract's ID. Passed through to {@link Operation.createCustomContract}. Default: random. */
-        salt?: Buffer | Uint8Array;
+        salt?: Uint8Array;
         /** The format used to decode `wasmHash`, if it's provided as a string. */
         format?: "hex" | "base64";
       },
   ): Promise<AssembledTransaction<T>> {
-    return ContractClient.deploy({ new_admin, new_fee }, options);
+    return ContractClient.deploy({ new_admin, new_fee }, options as any);
   }
   constructor(public override readonly options: ContractClientOptions) {
     super(
