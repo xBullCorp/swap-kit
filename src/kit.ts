@@ -1,11 +1,20 @@
 import { type Account, type Networks, Operation, type Transaction, TransactionBuilder } from "@stellar/stellar-sdk";
-import type { AssetsListResult, QuoteParams, QuoteResult, StrictSendParams, StrictSendResult, SwapKitParams } from "./types.ts";
-import { type InferInput, parse } from "@valibot/valibot";
+import type {
+  AssetsListResult,
+  QuoteParams,
+  QuoteResult,
+  StrictSendParams,
+  StrictSendRecord,
+  StrictSendResult,
+  SwapKitParams,
+} from "./types.ts";
+import { type InferInput, parse, parseAsync } from "@valibot/valibot";
 import {
   AssetSchema,
   QuoteParamsSchema,
   QuoteResultSchema,
   StrictSendPayloadSchema,
+  StrictSendRecordSchema,
   StrictSendResponseSchema,
   StrictSendResultSchema,
   SwapKitParamsSchema,
@@ -21,7 +30,7 @@ export class SwapKit {
   #passphrase: Networks;
   #apiUrl: string;
 
-  constructor(params: SwapKitParams) {
+  constructor(params?: SwapKitParams) {
     const {
       rpcUrl,
       allowHttp,
@@ -121,5 +130,14 @@ export class SwapKit {
   async assetsList(): Promise<AssetsListResult> {
     const response: InferInput<typeof AssetSchema>[] = await this.#api.url("/assets/list").get().json();
     return response.map((asset) => parse(AssetSchema, asset));
+  }
+
+  async getAddressOperations(address: string, page: number = 0): Promise<StrictSendRecord[]> {
+    const response: InferInput<typeof AssetSchema>[] = await this.#api.url(`/records/account/${address}/`)
+      .query({ page })
+      .get()
+      .json();
+
+    return await Promise.all(response.map((r) => parseAsync(StrictSendRecordSchema, r)));
   }
 }

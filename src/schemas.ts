@@ -15,10 +15,12 @@ import {
   string,
   toBigint,
   toString,
+  transform,
   union,
 } from "@valibot/valibot";
 import { SwapContract } from "./types.ts";
 import { Networks, StrKey } from "@stellar/stellar-sdk";
+import { encodeBase64Url } from "@std/encoding";
 
 export const IsStellarAccount = (): CustomSchema<string, (issue: CustomIssue) => string> =>
   custom((input: unknown): boolean => {
@@ -38,24 +40,34 @@ export const IsStellarAddress = (): CustomSchema<string, string> =>
     return StrKey.isValidContract(input) || StrKey.isValidEd25519PublicKey(input);
   }, "Value is not a valid 'C' Stellar Address");
 
-export const SwapKitParamsSchema = object({
-  rpcUrl: optional(string(), "https://rpc.lightsail.network"),
-  allowHttp: optional(boolean(), false),
-  passphrase: optional(enum_(Networks), Networks.PUBLIC),
-  swapContract: optional(enum_(SwapContract), SwapContract.MAINNET),
-  apiUrl: optional(string(), "https://swap-api.xbull.io"),
-});
+export const SwapKitParamsSchema = optional(
+  object({
+    rpcUrl: optional(string(), "https://rpc.lightsail.network"),
+    allowHttp: optional(boolean(), false),
+    passphrase: optional(enum_(Networks), Networks.PUBLIC),
+    swapContract: optional(enum_(SwapContract), SwapContract.MAINNET),
+    apiUrl: optional(string(), "https://swap-api.xbull.io"),
+  }),
+  {},
+);
 
 export const SwapReferralSchema = object({
   referral: IsStellarAddress(),
   feePercentage: pipe(union([pipe(string(), toBigint()), bigint()]), minValue(1n)),
 });
 
+export const ReferralFeesSchema = pipe(
+  array(SwapReferralSchema),
+  transform((v): string => {
+    return encodeBase64Url(new TextEncoder().encode(JSON.stringify(v, (_, v) => typeof v === "bigint" ? v.toString() : v)));
+  }),
+);
+
 export const QuoteParamsSchema = object({
   fromAsset: IsStellarContract(),
   toAsset: IsStellarContract(),
   amount: pipe(union([pipe(string(), toBigint()), bigint()]), minValue(1n)),
-  referralFees: optional(array(SwapReferralSchema), []),
+  referralFees: optional(ReferralFeesSchema, []),
 });
 
 export const QuoteResultSchema = object({
@@ -84,7 +96,7 @@ export const StrictSendParamsSchema = intersect([
     to: optional(IsStellarAddress()),
     amount: pipe(union([pipe(string(), toBigint()), bigint()]), minValue(1n)),
     minToReceive: pipe(union([pipe(string(), toBigint()), bigint()]), minValue(1n)),
-    referralFees: optional(array(SwapReferralSchema), []),
+    referralFees: optional(ReferralFeesSchema, []),
   }),
 ]);
 
@@ -94,7 +106,7 @@ export const StrictSendPayloadSchema = object({
   to: IsStellarAddress(),
   amount: union([pipe(bigint(), toString()), string()]),
   minToReceive: union([pipe(bigint(), toString()), string()]),
-  referralFees: optional(array(SwapReferralSchema), []),
+  referralFees: optional(ReferralFeesSchema, []),
 });
 
 export const StrictSendResponseSchema = object({
@@ -119,4 +131,17 @@ export const AssetSchema = object({
   domain: string(),
   icon: string(),
   decimals: number(),
+});
+
+export const StrictSendRecordSchema = object({
+  from: IsStellarAddress(),
+  to: IsStellarAddress(),
+  from_asset: IsStellarContract(),
+  to_asset: IsStellarContract(),
+  from_amount: pipe(string(), toBigint(), bigint()),
+  to_amount: pipe(string(), toBigint(), bigint()),
+  platform_fee: pipe(string(), toBigint(), bigint()),
+  external_fees: pipe(string(), toBigint(), bigint()),
+  tx_hash: string(),
+  timestamp: pipe(string(), toBigint(), bigint()),
 });
