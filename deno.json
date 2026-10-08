@@ -1,6 +1,6 @@
 {
   "name": "@xbullcorp/swap-kit",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "exports": {
     ".": "./src/mod.ts",
     "./schemas": "./src/schemas.ts",
@@ -20,6 +20,12 @@
   },
   "fmt": {
     "lineWidth": 140
+  },
+  "publish": {
+    "exclude": [
+      "./tests",
+      "./swap-examples.png"
+    ]
   },
   "lint": {
     "rules": {
